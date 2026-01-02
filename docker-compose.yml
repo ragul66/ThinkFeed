@@ -8,15 +8,16 @@ services:
       # POSTGRES_USER: newsuser
       # POSTGRES_PASSWORD: newspass
       # POSTGRES_DB: newsdb
-      POSTGRES_USER:newuser
-      POSTGRES_PASSWORD:8hI7zf5RIRuRF3TNDRbZ96zr1EBWm31J
-      POSTGRES_DB:newsdb_qt49
+      POSTGRES_USER: newuser
+      POSTGRES_PASSWORD: 8hI7zf5RIRuRF3TNDRbZ96zr1EBWm31J
+      POSTGRES_DB: newsdb_qt49
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U newsuser -d newsdb_qt49"]
+      # test: ["CMD-SHELL", "pg_isready -U newsuser -d newsdb_qt49"]
+      test: ["CMD-SHELL", "pg_isready -U newuser -d newsdb_qt49"]
       interval: 10s
       timeout: 5s
       retries: 5
