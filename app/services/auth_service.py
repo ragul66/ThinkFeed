@@ -31,14 +31,36 @@ class AuthService:
         return user
     
     def authenticate_user(self, db: Session, login_data: UserLogin) -> User:
+        # Find user by email
         user = db.query(User).filter(User.email == login_data.email).first()
-        if not user or not verify_password(login_data.password, user.hashed_password):
+        
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password"
             )
+        
+        # Check if user is active
         if not user.is_active:
-            raise HTTPException(status_code=400, detail="Inactive user")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been deactivated. Please contact support."
+            )
+        
+        # Check if user registered with Google
+        if user.is_google_user and not user.hashed_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This account uses Google Sign-In. Please use 'Continue with Google' to login."
+            )
+        
+        # Verify password
+        if not user.hashed_password or not verify_password(login_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password"
+            )
+        
         return user
     
     def create_token(self, user_id: int) -> str:

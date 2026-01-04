@@ -36,10 +36,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: int = payload.get("sub")
-        if user_id is None:
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
             raise credentials_exception
-    except JWTError:
+        user_id = int(user_id_str)
+    except (JWTError, ValueError, TypeError) as e:
+        print(f"Token validation error: {e}")
         raise credentials_exception
     
     user = db.query(User).filter(User.id == user_id).first()

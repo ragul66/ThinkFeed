@@ -48,9 +48,24 @@ async def save_article(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    article = news_service.save_article_to_db(db, article_data)
-    saved = news_service.save_user_article(db, current_user.id, article.id)
-    return {"message": "Article saved successfully", "saved_article_id": saved.id}
+    try:
+        # Validate article data
+        if not article_data.get("url"):
+            raise HTTPException(status_code=400, detail="Article URL is required")
+        if not article_data.get("title"):
+            raise HTTPException(status_code=400, detail="Article title is required")
+        
+        article = news_service.save_article_to_db(db, article_data)
+        saved = news_service.save_user_article(db, current_user.id, article.id)
+        return {
+            "message": "Article saved successfully",
+            "saved_article_id": saved.id,
+            "article_id": article.id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save article: {str(e)}")
 
 @router.get("/saved", response_model=List[SavedArticleResponse])
 async def get_saved_articles(

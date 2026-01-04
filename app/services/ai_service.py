@@ -23,41 +23,64 @@ class AIService:
     
     async def summarize_article(self, db: Session, article_id: int, content: str) -> str:
         try:
+            # Check cache first
             cache_key = f"summary:article:{article_id}"
             cached = redis_client.get(cache_key)
             if cached:
                 logger.info(f"Returning cached summary for article {article_id}")
                 return cached
             
+            # Check database for existing summary
             existing_summary = db.query(ArticleSummary).filter(ArticleSummary.article_id == article_id).first()
             if existing_summary:
                 redis_client.set(cache_key, existing_summary.summary, expire=86400)
                 logger.info(f"Returning existing summary for article {article_id}")
                 return existing_summary.summary
             
+            # Validate content
             if not content or len(content.strip()) < 50:
                 raise ValueError("Article content is too short or empty for summarization")
             
+            # Prepare prompt
             prompt = f"""Please provide a concise summary of the following news article in 3-4 sentences. 
             Focus on the key points and main takeaways:
 
-            {content}
+            {content[:5000]}
             
             Summary:"""
             
             logger.info(f"Generating new summary for article {article_id}")
-            response = self.model.generate_content(prompt)
-            summary = response.text
             
+            # Generate summary with error handling
+            try:
+                response = self.model.generate_content(prompt)
+                
+                if not response or not response.text:
+                    raise ValueError("Gemini API returned empty response")
+                
+                summary = response.text.strip()
+                
+                if len(summary) < 20:
+                    raise ValueError("Generated summary is too short")
+                
+            except Exception as gemini_error:
+                logger.error(f"Gemini API error: {str(gemini_error)}")
+                raise ValueError(f"AI service error: {str(gemini_error)}")
+            
+            # Save to database
             article_summary = ArticleSummary(article_id=article_id, summary=summary)
             db.add(article_summary)
             db.commit()
             
+            # Cache the result
             redis_client.set(cache_key, summary, expire=86400)
             logger.info(f"Successfully generated and cached summary for article {article_id}")
             return summary
-        except Exception as e:
-            logger.error(f"Error summarizing article {article_id}: {str(e)}")
+            
+        except ValueError:
             raise
+        except Exception as e:
+            logger.error(f"Error summarizing article {article_id}: {str(e)}", exc_info=True)
+            raise ValueError(f"Failed to generate summary: {str(e)}")
 
 ai_service = AIService()

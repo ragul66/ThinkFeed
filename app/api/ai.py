@@ -20,17 +20,25 @@ async def summarize_article(
     db: Session = Depends(get_db)
 ):
     try:
+        logger.info(f"Summarize request for URL: {request.article_url}")
         article = db.query(NewsArticle).filter(NewsArticle.url == request.article_url).first()
         
         if not article:
             logger.warning(f"Article not found for URL: {request.article_url}")
             raise HTTPException(status_code=404, detail="Article not found in database. Please save it first.")
         
+        logger.info(f"Found article ID: {article.id}, has content: {bool(article.content)}, content length: {len(article.content) if article.content else 0}")
+        
         if not article.content:
             logger.warning(f"Article {article.id} has no content")
             raise HTTPException(status_code=400, detail="Article content not available for summarization")
         
+        if len(article.content.strip()) < 50:
+            logger.warning(f"Article {article.id} content too short: {len(article.content)} chars")
+            raise HTTPException(status_code=400, detail="Article content is too short for summarization")
+        
         summary = await ai_service.summarize_article(db, article.id, article.content)
+        logger.info(f"Successfully generated summary for article {article.id}")
         return {
             "summary": summary,
             "article_id": article.id
