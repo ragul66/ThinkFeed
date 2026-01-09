@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     # App
@@ -20,8 +20,13 @@ class Settings(BaseSettings):
     # Gemini AI
     GEMINI_API_KEY: str
     
-    # Gemini AI Chat (separate key for chat feature)
-    GEMINI_CHAT_API_KEY: str
+    # Gemini AI Chat (separate key for chat feature, optional - defaults to GEMINI_API_KEY)
+    GEMINI_CHAT_API_KEY: Optional[str] = None
+    
+    @property
+    def chat_api_key(self) -> str:
+        """Return chat API key, fallback to main API key if not set"""
+        return self.GEMINI_CHAT_API_KEY or self.GEMINI_API_KEY
     
     # JWT
     SECRET_KEY: str

@@ -10,14 +10,14 @@ logger = logging.getLogger(__name__)
 class ChatService:
     def __init__(self):
         try:
-            if not settings.GEMINI_CHAT_API_KEY or settings.GEMINI_CHAT_API_KEY == "your_gemini_api_key_here":
+            if not settings.chat_api_key or settings.chat_api_key == "your_gemini_api_key_here":
                 logger.error("Gemini Chat API key not configured")
                 raise ValueError("Gemini Chat API key not configured")
             
-            genai.configure(api_key=settings.GEMINI_CHAT_API_KEY)
+            genai.configure(api_key=settings.chat_api_key)
             
-            # System instruction to restrict responses to news only
-            system_instruction = """You are ThinkFeed AI, a specialized news assistant. Your role is to:
+            # System instruction for news-only responses
+            self.system_instruction = """You are ThinkFeed AI, a specialized news assistant. Your role is to:
 
 1. ONLY answer questions about news, current events, and world affairs
 2. Provide accurate, unbiased information about recent news stories
@@ -38,10 +38,7 @@ Example responses for non-news questions:
 
 Stay focused on news and current events at all times."""
 
-            self.model = genai.GenerativeModel(
-                'gemini-2.5-flash',
-                system_instruction=system_instruction
-            )
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
             logger.info("Chat Service initialized successfully with gemini-2.5-flash model")
         except Exception as e:
             logger.error(f"Failed to initialize Chat Service: {str(e)}")
@@ -68,10 +65,12 @@ Stay focused on news and current events at all times."""
                 raise ValueError("Message is too long. Please keep it under 2000 characters.")
             
             # Start or continue chat session
-            if conversation_history:
+            if conversation_history and len(conversation_history) > 0:
                 chat = self.model.start_chat(history=conversation_history)
             else:
+                # For first message, prepend system instruction
                 chat = self.model.start_chat(history=[])
+                message = f"{self.system_instruction}\n\nUser question: {message}"
             
             logger.info(f"Processing chat message for user {user_id}")
             
