@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Gemini AI
     GEMINI_API_KEY: str
     
+    # Gemini AI Chat (separate key for chat feature)
+    GEMINI_CHAT_API_KEY: str
+    
     # JWT
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
