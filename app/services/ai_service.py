@@ -15,8 +15,9 @@ class AIService:
                 raise ValueError("Gemini API key not configured")
             
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-            logger.info("AI Service initialized successfully")
+            # Use gemini-2.5-flash which is the latest stable model
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            logger.info("AI Service initialized successfully with gemini-2.5-flash model")
         except Exception as e:
             logger.error(f"Failed to initialize AI Service: {str(e)}")
             raise
@@ -64,8 +65,18 @@ class AIService:
                     raise ValueError("Generated summary is too short")
                 
             except Exception as gemini_error:
-                logger.error(f"Gemini API error: {str(gemini_error)}")
-                raise ValueError(f"AI service error: {str(gemini_error)}")
+                error_msg = str(gemini_error)
+                logger.error(f"Gemini API error: {error_msg}")
+                
+                # Check for specific error types
+                if "429" in error_msg or "quota" in error_msg.lower():
+                    raise ValueError("AI service quota exceeded. Please try again later or upgrade your API plan.")
+                elif "404" in error_msg or "not found" in error_msg.lower():
+                    raise ValueError("AI model not available. Please contact support.")
+                elif "403" in error_msg or "permission" in error_msg.lower():
+                    raise ValueError("AI service access denied. Please check API key configuration.")
+                else:
+                    raise ValueError(f"AI service error: {error_msg}")
             
             # Save to database
             article_summary = ArticleSummary(article_id=article_id, summary=summary)
